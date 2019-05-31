@@ -1,0 +1,80 @@
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: gateway
+  namespace: firedex
+spec:
+  template:
+    metadata:
+      labels:
+        app: gateway
+        version: v1
+        type: mqtt
+    spec:
+      initContainers:
+      - name: init-gateway
+        image: busybox:1.28
+        command: ['sh', '-c', 'echo "waiting for setup"; sleep 30; echo "starting gateway"']
+      - name: firedex-rules
+        image: firedex/setup_rules:latest
+        securityContext:
+          capabilities:
+            add: ["NET_ADMIN"]
+        imagePullPolicy: Never
+        volumeMounts:
+        - mountPath: /opt/firedex/network_flows
+          name: configurations
+        - mountPath: /opt/firedex/results
+          name: results  
+      containers:  
+      - name: firedex-test
+        image: firedex/test:latest
+        securityContext:
+          capabilities:
+            add: ["NET_ADMIN"]
+        imagePullPolicy: Never  
+
+      - name: firedex
+        image: hemanthmalla/firedex:latest
+        # TODO : Only for local testing
+        imagePullPolicy: Never
+        env:
+        - name: ROLE
+          value: gateway
+        volumeMounts:
+        - mountPath: /var/log/gateway
+          name: logs 
+        ports:
+        - containerPort: 20000 
+      volumes:
+      - name: logs
+        hostPath:
+          # directory location on host
+          path: /home/docker/data/gateway
+          type: Directory
+      - name: configurations
+        hostPath:
+          # directory location on host
+          path: /home/docker/data/experimental_configuration/network_flows
+          type: Directory
+      - name: results
+        hostPath:
+          # directory location on host
+          path: /home/docker/data/subscriber
+          type: Directory        
+      restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway
+  namespace: firedex
+  labels:
+    app: gateway
+spec:
+  ports:
+  - port: 20000
+    protocol: UDP
+    name: udp
+  selector:
+    app: gateway
