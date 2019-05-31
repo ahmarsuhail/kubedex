@@ -1,5 +1,9 @@
 # kubdex
 
+This project implements network proritization for bandwidth contrained IoT systems. It uses linux's traffic control module to implement rules on the network interface of each container. 
+
+The rules are applied based on priorities that each "topic" recieves from the middleware.
+
 ## Components needed
 
 * Docker
